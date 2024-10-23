@@ -9,7 +9,7 @@ function App() {
   const [error, setError] = useState(null); // 에러 상태 추가
 
   // 백엔드 URL
-  const BACKEND_URL = "https://port-0-guestbook-backend-m2k9vm870c02b857.sel4.cloudtype.app";
+  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 
   useEffect(() => {
     fetch(`${BACKEND_URL}/api/guestbook`)
