@@ -6,14 +6,24 @@ function App() {
   const [message, setMessage] = useState("");
   const [password, setPassword] = useState("");
   const [guestbookEntries, setGuestbookEntries] = useState([]);
+  const [error, setError] = useState(null); // 에러 상태 추가
 
   // 백엔드 URL
   const BACKEND_URL = "https://port-0-guestbook-backend-m2k9vm870c02b857.sel4.cloudtype.app";
 
   useEffect(() => {
     fetch(`${BACKEND_URL}/api/guestbook`)
-      .then((response) => response.json())
-      .then((data) => setGuestbookEntries(data));
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch guestbook entries");
+        }
+        return response.json();
+      })
+      .then((data) => setGuestbookEntries(data))
+      .catch((error) => {
+        console.error("Error fetching guestbook entries:", error);
+        setError("Failed to load guestbook entries. Please try again later.");
+      });
   }, []);
 
   const handleSubmit = (e) => {
@@ -25,12 +35,21 @@ function App() {
       },
       body: JSON.stringify({ name, message, password }),
     })
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to add guestbook entry");
+        }
+        return response.json();
+      })
       .then((newEntry) => {
         setGuestbookEntries([newEntry, ...guestbookEntries]);
         setName("");
         setMessage("");
         setPassword("");
+      })
+      .catch((error) => {
+        console.error("Error adding guestbook entry:", error);
+        setError("Failed to add guestbook entry. Please try again later.");
       });
   };
 
@@ -42,13 +61,20 @@ function App() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ password: userPassword }),
-    }).then((response) => {
-      if (response.status === 403) {
-        alert("비밀번호가 일치하지 않습니다.");
-      } else {
-        setGuestbookEntries(guestbookEntries.filter((entry) => entry.id !== id));
-      }
-    });
+    })
+      .then((response) => {
+        if (response.status === 403) {
+          alert("비밀번호가 일치하지 않습니다.");
+        } else if (response.ok) {
+          setGuestbookEntries(guestbookEntries.filter((entry) => entry.id !== id));
+        } else {
+          throw new Error("Failed to delete guestbook entry");
+        }
+      })
+      .catch((error) => {
+        console.error("Error deleting guestbook entry:", error);
+        setError("Failed to delete guestbook entry. Please try again later.");
+      });
   };
 
   const handleEdit = (id) => {
@@ -60,20 +86,29 @@ function App() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ message: newMessage, password: userPassword }),
-    }).then((response) => {
-      if (response.status === 403) {
-        alert("비밀번호가 일치하지 않습니다.");
-      } else {
-        response.json().then((updatedEntry) => {
-          setGuestbookEntries(guestbookEntries.map((entry) => (entry.id === id ? updatedEntry : entry)));
-        });
-      }
-    });
+    })
+      .then((response) => {
+        if (response.status === 403) {
+          alert("비밀번호가 일치하지 않습니다.");
+        } else if (response.ok) {
+          return response.json();
+        } else {
+          throw new Error("Failed to update guestbook entry");
+        }
+      })
+      .then((updatedEntry) => {
+        setGuestbookEntries(guestbookEntries.map((entry) => (entry.id === id ? updatedEntry : entry)));
+      })
+      .catch((error) => {
+        console.error("Error updating guestbook entry:", error);
+        setError("Failed to update guestbook entry. Please try again later.");
+      });
   };
 
   return (
     <div className="App">
       <h1>방명록</h1>
+      {error && <div className="error">{error}</div>} {/* 에러 메시지 표시 */}
       <form onSubmit={handleSubmit}>
         <input type="text" placeholder="이름" value={name} onChange={(e) => setName(e.target.value)} required />
         <textarea placeholder="메시지" value={message} onChange={(e) => setMessage(e.target.value)} required />
